@@ -45,6 +45,9 @@ pub async fn run() {
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => eprintln!("{:?}", e),
             }
+        },
+        Event::MainEventsCleared => {
+            state.window().request_redraw();
         }
         _ => {}
     });
