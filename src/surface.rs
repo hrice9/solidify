@@ -1,4 +1,6 @@
+use wgpu::util::DeviceExt;
 use winit::{window::Window, event::WindowEvent};
+use crate::vertex::Vertex;
 
 pub struct State {
     surface: wgpu::Surface,
@@ -11,8 +13,23 @@ pub struct State {
     // unsafe references to the window's resources.
     window: Window,
     clear_color: wgpu::Color,
-    render_pipeline: wgpu::RenderPipeline
+    render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
+
+const VERTICES: &[Vertex] = &[
+    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0], normal: [0.0, 0.0, 1.0] },
+    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0], normal: [0.0, 0.0, 1.0] },
+    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0], normal: [0.0, 0.0, 1.0] },
+    
+];
+
+const INDICES: &[u16] = &[
+    0, 1, 2
+];
 
 impl State {
     pub async fn new(window: Window) -> Self {
@@ -86,7 +103,9 @@ impl State {
                 vertex: wgpu::VertexState { 
                     module: &shader, 
                     entry_point: "vs_main", 
-                    buffers: &[] 
+                    buffers: &[
+                        Vertex::desc(),
+                    ] 
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -116,6 +135,26 @@ impl State {
             }
         );
 
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES),
+                usage: wgpu::BufferUsages::VERTEX,
+            }
+        );
+
+        let num_vertices = VERTICES.len() as u32;
+        
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(INDICES),
+                usage: wgpu::BufferUsages::INDEX,
+            }
+        );
+
+        let num_indices = INDICES.len() as u32;
+
         Self {
             window,
             surface,
@@ -124,7 +163,11 @@ impl State {
             config,
             size,
             clear_color,
-            render_pipeline
+            render_pipeline,
+            vertex_buffer,
+            num_vertices,
+            index_buffer,
+            num_indices
         }
 
     }
@@ -184,7 +227,10 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            // render_pass.draw(0..self.num_vertices, 0..1);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
