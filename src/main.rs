@@ -1,6 +1,7 @@
 mod window;
 mod surface;
 mod vertex;
+mod camera;
 
 fn main() {
     println!("Hello, world!");
