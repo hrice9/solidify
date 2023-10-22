@@ -53,6 +53,7 @@ fn f32_from_vec_offset(vec: &Vec<u8>, offset: usize) -> f32 {
 }
 
 const STL_HEADER_SIZE: u64 = 80;
+// TODO: Make this faster
 pub async fn load_stl(
     file_path: &str,
     device: &wgpu::Device,
@@ -167,6 +168,12 @@ pub async fn load_stl(
     }
 }
 
+pub async fn save_stl(
+    model: Model,
+    file_path: String
+) {
+    todo!()
+}
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
