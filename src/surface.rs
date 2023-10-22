@@ -1,7 +1,9 @@
 use wgpu::util::DeviceExt;
 use winit::{window::Window, event::WindowEvent};
-use crate::vertex::Vertex;
+// use crate::vertex::Vertex;
 use crate::camera::{Camera, CameraUniform};
+use crate::model::{self, ModelVertex, load_stl};
+use crate::model::Vertex;
 
 pub struct State {
     surface: wgpu::Surface,
@@ -22,13 +24,14 @@ pub struct State {
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
-    camera_bind_group: wgpu::BindGroup
+    camera_bind_group: wgpu::BindGroup,
+    stl_model: model::Model
 }
 
-const VERTICES: &[Vertex] = &[
-    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0], normal: [0.0, 0.0, 1.0] },
-    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0], normal: [0.0, 0.0, 1.0] },
-    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0], normal: [0.0, 0.0, 1.0] },
+const VERTICES: &[ModelVertex] = &[
+    ModelVertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0], normal: [0.0, 0.0, 1.0], tex_coords: [0.0, 0.0] },
+    ModelVertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0], normal: [0.0, 0.0, 1.0], tex_coords: [0.0, 0.0] },
+    ModelVertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0], normal: [0.0, 0.0, 1.0], tex_coords: [0.0, 0.0] },
     
 ];
 
@@ -94,7 +97,7 @@ impl State {
 
         
         let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
+            eye: (0.0, -50.0, 50.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
@@ -158,7 +161,7 @@ impl State {
                     module: &shader, 
                     entry_point: "vs_main", 
                     buffers: &[
-                        Vertex::desc(),
+                        model::ModelVertex::desc(),
                     ] 
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -209,6 +212,10 @@ impl State {
 
         let num_indices = INDICES.len() as u32;
 
+        // Load the model
+        let stl_model = load_stl(
+            "D:\\stls\\VrondissMini.stl", &device, &queue).await;
+
         Self {
             window,
             surface,
@@ -225,7 +232,8 @@ impl State {
             camera,
             camera_uniform,
             camera_buffer,
-            camera_bind_group
+            camera_bind_group,
+            stl_model
         }
 
     }
@@ -298,6 +306,10 @@ impl State {
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+        
+            use model::DrawModel;
+            render_pass.draw_mesh(&self.stl_model.meshes[0]);
+
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
